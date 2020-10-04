@@ -1,11 +1,8 @@
-﻿
-using CaseForNuevo.Bussiness.SearchArgs;
-using CaseForNuevo.Bussiness.Services;
-using CaseForNuevo.Data.Models;
+﻿using CaseForNuevo.Bussiness.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+using NLog.Extensions.Logging;
+
 
 namespace CaseForNuevo.App
 {
@@ -15,50 +12,19 @@ namespace CaseForNuevo.App
         {
 
             ServiceProvider serviceProvider = new ServiceCollection()
-                       .AddTransient<ITCMBService, TCMBService>()
+                       .AddTransient<Logger>()
+                        .AddLogging(loggingBuilder =>
+                        {
+                            loggingBuilder.ClearProviders();
+                            loggingBuilder.SetMinimumLevel(LogLevel.Trace);
+                            loggingBuilder.AddNLog();
+                        })
+                        .AddSingleton<ITCMBService, TCMBService>()
+                        .AddSingleton<ILogger, Logger>()
+                        .AddTransient<CaseApp>()
                        .BuildServiceProvider();
-            ITCMBService tcmbService = serviceProvider.GetService<ITCMBService>();
-
-
-            var exportFlag = false;
-            Console.WriteLine(@"Do you want export after execute? Y\N" );
-            ConsoleKeyInfo keyInfo = Console.ReadKey();
-            if (keyInfo.Key == ConsoleKey.Y)
-            {
-                exportFlag = true;
-            }
-
-
-            Console.WriteLine(@"GetAll Method ? Press 1");
-            Console.WriteLine(@"Get Method? Press 2");
-            Console.WriteLine(@"SortedBySelectedField Method? Press 3");
-            keyInfo = Console.ReadKey();
-            if (keyInfo.Key == ConsoleKey.D1)
-            {
-                var response = tcmbService.GetAll();
-                if (exportFlag)
-                    tcmbService.ExportCSV(response);
-                Console.WriteLine(JsonConvert.SerializeObject(response));
-            }
-            if (keyInfo.Key == ConsoleKey.D2)
-            {
-                var response = tcmbService.Get(new CurrencyRateSearchArgs { Name = "ABD DOLARI" });
-                List<CurrencyModel> list = new List<CurrencyModel>();
-                list.Add(response);
-                if (exportFlag)
-                    tcmbService.ExportCSV(new ResponseModel {Currency = list });
-                Console.WriteLine(JsonConvert.SerializeObject(response));
-            }
-            if (keyInfo.Key == ConsoleKey.D3)
-            {
-                var response = tcmbService.SortedBySelectedField(new CurrencyRateSearchArgs { BanknoteBuying = "1" });
-                if (exportFlag)
-                    tcmbService.ExportCSV(response);
-                Console.WriteLine(JsonConvert.SerializeObject(response));
-            }
-
-            Console.ReadLine();
-
+            var app = serviceProvider.GetService<CaseApp>();
+            app.Run();
         }
 
     }

@@ -2,6 +2,8 @@
 using CaseForNuevo.Data.Models;
 using CaseForNuevo.ExternalServices.TCMB;
 using CsvHelper;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -13,9 +15,11 @@ namespace CaseForNuevo.Bussiness.Services
     public class TCMBService : ITCMBService
     {
         private readonly IBankService _bankService;
-        public TCMBService()
+        private readonly ILogger _logger;
+        public TCMBService(ILogger logger)
         {
             _bankService = new BankService();
+            _logger = logger;
         }
 
         public void Dispose()
@@ -24,7 +28,7 @@ namespace CaseForNuevo.Bussiness.Services
         public void ExportCSV(ResponseModel responseModel)
         {
             using (var sw = new StreamWriter(@"test.csv", false, new UTF8Encoding(true)))
-            using (var cw = new CsvWriter(sw,CultureInfo.InvariantCulture))
+            using (var cw = new CsvWriter(sw, CultureInfo.InvariantCulture))
             {
                 cw.WriteHeader<CurrencyModel>();
                 cw.NextRecord();
@@ -74,32 +78,40 @@ namespace CaseForNuevo.Bussiness.Services
 
         public ResponseModel SortedBySelectedField(CurrencyRateSearchArgs args)
         {
-            var response = _bankService.GetCurrencies();
-            var allCurrenciesList = response.Currency;
-
-            if (args != null)
+            try
             {
-                if (args.Name != null && !string.IsNullOrEmpty(args.Name))
+                var response = _bankService.GetCurrencies();
+                var allCurrenciesList = response.Currency;
+
+                if (args != null)
                 {
-                    response.Currency = allCurrenciesList.OrderBy(x => x.Isim).ToList();
-                }
-                if (args.CurrencyName != null && !string.IsNullOrEmpty(args.CurrencyName))
-                {
-                    response.Currency = allCurrenciesList.OrderBy(x => x.CurrencyName).ToList();
-                }
-                if (args.BanknoteSelling != null && !string.IsNullOrEmpty(args.BanknoteSelling))
-                {
-                    response.Currency = allCurrenciesList.OrderBy(x => x.BanknoteSelling).ToList();
-                }
-                if (args.BanknoteBuying != null && !string.IsNullOrEmpty(args.BanknoteBuying))
-                {
-                    response.Currency =  allCurrenciesList.OrderBy(x => x.BanknoteBuying).ToList();
+                    if (args.Name != null && !string.IsNullOrEmpty(args.Name))
+                    {
+                        response.Currency = allCurrenciesList.OrderBy(x => x.Isim).ToList();
+                    }
+                    if (args.CurrencyName != null && !string.IsNullOrEmpty(args.CurrencyName))
+                    {
+                        response.Currency = allCurrenciesList.OrderBy(x => x.CurrencyName).ToList();
+                    }
+                    if (args.BanknoteSelling != null && !string.IsNullOrEmpty(args.BanknoteSelling))
+                    {
+                        response.Currency = allCurrenciesList.OrderBy(x => x.BanknoteSelling).ToList();
+                    }
+                    if (args.BanknoteBuying != null && !string.IsNullOrEmpty(args.BanknoteBuying))
+                    {
+                        response.Currency = allCurrenciesList.OrderBy(x => x.BanknoteBuying).ToList();
+                    }
+
+                    return response;
                 }
 
                 return response;
             }
-
-            return response;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                throw;
+            }
         }
 
 
